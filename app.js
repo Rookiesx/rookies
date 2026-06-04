@@ -669,12 +669,12 @@
             });
 
             if (selectedUsers.length === 0) {
-                alert("Please select at least one user to send a request to.");
+                showToast("Please select at least one user to send a request to.", 'error');
                 return;
             }
 
             if (isGroup && !newGroupName.value.trim()) {
-                alert("Please enter a group name.");
+                showToast("Please enter a group name.", 'error');
                 return;
             }
 
@@ -1113,7 +1113,7 @@
                     return;
                 }
                 if (message.type === 'request_sent') {
-                    alert(message.content);
+                    showToast(message.content);
                     return;
                 }
 
@@ -1233,7 +1233,7 @@
             if (!file) return;
 
             if (file.size > 50 * 1024 * 1024) {
-                alert("File is too large (max 50MB).");
+                showToast("File is too large (max 50MB).", 'error');
                 return;
             }
 
@@ -1278,7 +1278,7 @@
                     cancelReply();
                 })
                 .catch(function (err) {
-                    alert("Could not upload file: " + err.message);
+                    showToast("Could not upload file: " + err.message, 'error');
                 })
                 .finally(function () {
                     attachmentButton.innerHTML = originalHtml;
@@ -1373,7 +1373,7 @@
                                 updateRoomPreview(activeRoomId, '🎤 Audio');
                             })
                             .catch(function (err) {
-                                alert("Could not upload audio: " + err.message);
+                                showToast("Could not upload audio: " + err.message, 'error');
                             })
                             .finally(function () {
                                 actionButton.disabled = false;
@@ -1382,7 +1382,7 @@
                         });
                     })
                     .catch(function (err) {
-                        alert("Could not access microphone: " + err.message);
+                        showToast("Could not access microphone: " + err.message, 'error');
                     });
             }
         });
@@ -2661,7 +2661,7 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("Microphone not supported");
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         } catch (e) {
-            alert("Could not access microphone: " + e.message);
+            showToast("Could not access microphone: " + e.message, 'error');
             return;
         }
 
@@ -2749,7 +2749,7 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("Microphone not supported");
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         } catch (e) {
-            alert("Could not access microphone: " + e.message);
+            showToast("Could not access microphone: " + e.message, 'error');
             endCall();
             return;
         }
@@ -2800,7 +2800,7 @@
         if (callState === 'calling' || callState === 'ringing') {
             stopRingtone();
             inCallStatus.textContent = "User is offline";
-            window.alert("User is offline. They will see a missed call.");
+            showToast("User is offline. They will see a missed call.");
             setTimeout(resetCallState, 2000);
 
             if (socket && socket.readyState === WebSocket.OPEN) {
