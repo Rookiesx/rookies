@@ -1353,7 +1353,7 @@ img.jumbo-emoji {
     }
 
     .composer {
-        grid-template-columns: 1fr;
+        /* Kept the side-by-side layout for input and action button */
     }
 
     .composer #nameInput {
