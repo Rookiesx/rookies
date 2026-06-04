@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rookies</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=3">
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    <script src="https://unpkg.com/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</head>
+<body>
+<main class="app-shell">
+    <aside class="sidebar-panel" id="sidebarPanel" style="display: none;">
+        <header class="sidebar-header">
+            <h2>Chats</h2>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <div class="dropdown" id="sidebarDropdown">
+                    <button id="sidebarMenuBtn" class="icon-btn" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; padding: 0 8px; color: #54656f;">⋮</button>
+                    <div id="sidebarMenuDropdown" class="dropdown-content hidden" style="position: absolute; right: 16px; top: 50px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; min-width: 150px; z-index: 1000; padding: 8px 0;">
+                        <div id="newChatBtn" class="dropdown-item">New Chat</div>
+                        <div id="selectChatsBtn" class="dropdown-item">Select Chats</div>
+                        <div id="profileButton" class="dropdown-item">Profile</div>
+                        <div id="logoutButton" class="dropdown-item danger">Logout</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <header class="sidebar-header hidden" id="selectModeHeader" style="background: var(--background-light); border-bottom: 1px solid var(--border-color); display: none;">
+            <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+                <button id="cancelSelectModeBtn" class="icon-btn" aria-label="Cancel" style="background: transparent; border: none; padding: 4px; cursor: pointer; color: var(--text-secondary);">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+                <h2 id="selectModeTitle" style="flex: 1; font-size: 1rem; margin: 0; text-align: left;">0 selected</h2>
+                <button id="clearSelectedChatsBtn" style="padding: 6px 12px; border: none; border-radius: 6px; background: var(--danger); color: white; font-weight: 600; cursor: pointer; font-size: 0.85rem;" disabled>Clear</button>
+            </div>
+        </header>
+        <div id="requestsContainer" class="requests-container" style="display: none;">
+            <div class="requests-header">Pending Requests</div>
+            <div id="requestList" class="request-list"></div>
+        </div>
+        <div id="roomList" class="room-list">
+            <!-- Dynamically populated rooms -->
+        </div>
+    </aside>
+    <section class="chat-panel" id="chatPanel" aria-label="Realtime chat">
+        <header class="chat-header">
+            <div style="display: flex; flex-direction: column; justify-content: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button id="backToSidebarBtn" class="back-btn hidden" aria-label="Back">
+                        <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
+                    </button>
+                    <div id="chatHeaderAvatar" class="room-avatar hidden" style="width: 36px; height: 36px; font-size: 1rem; margin-right: 4px;">R</div>
+                    <h1 id="chatHeaderTitle" style="margin: 0; font-size: 1.15rem; line-height: 1; font-weight: 700;">Rookies</h1>
+                </div>
+                <p id="currentUser" class="current-user" hidden></p>
+            </div>
+                <div class="header-actions" style="display: flex; gap: 10px; align-items: center; position: relative;">
+                    <button id="callButton" type="button" class="icon-btn hidden" aria-label="Start Voice Call" style="background: transparent; border: none; font-size: 1.25rem; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; padding: 4px;">📞</button>
+                    <!-- Removed connect button from chat header -->
+                    <div class="dropdown" id="headerDropdown">
+                        <button id="menuButton" type="button" class="header-menu-btn" aria-label="Menu" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; padding: 4px 8px; color: white; display: flex; align-items: center; justify-content: center; border-radius: 4px;">⋮</button>
+                        <div id="menuDropdown" class="dropdown-content" style="display: none; position: absolute; right: 0; top: 100%; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; min-width: 150px; z-index: 1000; padding: 8px 0;">
+                            <div class="dropdown-item" id="clearChatOption">Clear Chat</div>
+                            <div class="dropdown-item danger" id="unfriendButton">Unfriend</div>
+                        </div>
+                    </div>
+                </div>
+        </header>
+
+        <div id="chatEmptyState" class="chat-empty-state">
+            <div class="empty-state-content">
+                <div class="empty-icon">💬</div>
+                <h2>Welcome to Rookies</h2>
+                <p>Select a user or group from the sidebar to start chatting.</p>
+            </div>
+        </div>
+
+        <div id="chatInterface" class="chat-interface hidden" style="display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0;">
+            
+            <div id="inCallOverlay" class="in-call-overlay hidden">
+                <div class="in-call-avatar">
+                    <span id="inCallAvatarText">?</span>
+                </div>
+                <h2 id="inCallName">Username</h2>
+                <div id="inCallStatus">Calling...</div>
+                <div class="in-call-actions">
+                    <button id="muteCallBtn" class="call-action-btn" aria-label="Mute Microphone" title="Mute/Unmute">🎤</button>
+                    <button id="endCallBtn" class="call-action-btn danger" aria-label="End Call" title="End Call">
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91z"></path><line x1="23" y1="1" x2="1" y2="23"></line></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <audio id="remoteAudio" autoplay hidden></audio>
+
+            <div id="messages" class="messages" aria-live="polite">
+                <button id="scrollButton" class="scroll-button" type="button" hidden aria-label="Scroll to latest messages">▼<span id="scrollCount" class="scroll-count" hidden></span></button>
+            </div>
+
+            <div id="replyContextBanner" class="reply-context-banner hidden" aria-hidden="true">
+                <div class="reply-content">
+                    <span id="replyToName" class="reply-name">Replying to...</span>
+                    <span id="replyToText" class="reply-text">Preview</span>
+                </div>
+                <button id="cancelReplyBtn" type="button" class="cancel-reply-btn" aria-label="Cancel reply">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <form id="messageForm" class="composer">
+                <div class="composer-middle">
+                    <button id="attachmentButton" type="button" aria-label="Attach file" class="composer-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                        </svg>
+                    </button>
+                    <input type="file" id="fileInput" hidden>
+                    <input id="messageInput" type="text" maxlength="500" placeholder="Write a message" autocomplete="off" disabled>
+                    <div id="recordingIndicator" class="recording-indicator hidden">
+                        <span class="recording-dot"></span>
+                        <span class="recording-text">Recording Audio...</span>
+                        <span id="recordingTime" class="recording-time">0:00</span>
+                    </div>
+                    <button id="emojiButton" type="button" aria-label="Choose emoji" class="composer-icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                        </svg>
+                    </button>
+                    <div id="emojiPicker" class="emoji-picker" hidden aria-hidden="true"></div>
+                </div>
+                <button id="actionButton" type="button" class="action-btn" aria-label="Action" disabled>
+                    <svg id="micIcon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" x2="12" y1="19" y2="22"></line>
+                    </svg>
+                    <svg id="sendIcon" class="hidden" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </section>
+</main>
+
+<div id="authModal" class="name-modal hidden" aria-hidden="true">
+    <div class="name-modal-panel" role="dialog" aria-modal="true" aria-labelledby="nameModalTitle">
+        <h2 id="nameModalTitle">Welcome to Rookies</h2>
+        <div class="custom-auth-form">
+            <p id="authError" class="auth-error hidden"></p>
+            <input id="authUsername" class="auth-input" type="text" placeholder="Login Username" autocomplete="username" spellcheck="false" maxlength="24">
+            <input id="authNickname" class="auth-input hidden" type="text" placeholder="Chat Display Name (Nickname)" autocomplete="nickname" spellcheck="false" maxlength="24">
+            <input id="authPassword" class="auth-input" type="password" placeholder="Password" autocomplete="current-password">
+            <div class="auth-buttons">
+                <button id="authLoginBtn" type="button" class="btn-primary">Login</button>
+                <button id="authRegisterBtn" type="button" class="btn-primary hidden">Register</button>
+            </div>
+            <div class="auth-toggle">
+                <span id="authToggleText">Don't have an account?</span>
+                <a href="#" id="authToggleLink">Register here</a>
+            </div>
+            <div class="auth-divider"><span>OR</span></div>
+            <button id="authGoogleBtn" type="button" class="btn-google">
+                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/><path fill="none" d="M1 1h22v22H1z"/></svg>
+                Sign in with Google
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="confirmModal" class="name-modal hidden" aria-hidden="true" style="z-index: 2000;">
+    <div class="name-modal-panel" role="dialog" aria-modal="true" style="text-align: center; max-width: 380px;">
+        <h3 id="confirmModalTitle" style="margin-top: 0; margin-bottom: 12px;">Confirm Action</h3>
+        <p id="confirmModalText" style="margin-bottom: 32px;">Are you sure?</p>
+        <div style="display: flex; gap: 12px;">
+            <button id="confirmCancelBtn" type="button" class="btn-secondary">Cancel</button>
+            <button id="confirmYesBtn" type="button" class="btn-danger" style="flex: 1; border: none; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; background: var(--primary); color: white; min-height: 48px; display: inline-flex; align-items: center; justify-content: center;">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="newChatModal" class="name-modal hidden" aria-hidden="true">
+    <div class="name-modal-panel new-chat-panel" role="dialog" aria-modal="true" style="max-width: 420px; text-align: left;">
+        <h3>New Chat</h3>
+        <p style="font-size: 0.95rem; margin-bottom: 24px;">Start a new conversation or create a group chat.</p>
+        
+        <div style="margin-bottom: 20px; display: flex; gap: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
+                <input type="radio" name="chatType" value="INDIVIDUAL" checked style="width: 18px; height: 18px; accent-color: var(--primary);"> 1-on-1 Chat
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
+                <input type="radio" name="chatType" value="GROUP" style="width: 18px; height: 18px; accent-color: var(--primary);"> Group Chat
+            </label>
+        </div>
+
+        <div id="groupNameContainer" style="display: none; margin-bottom: 20px;">
+            <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">Group Name</label>
+            <input type="text" id="newGroupName" class="auth-input" placeholder="Enter Group Name">
+        </div>
+
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">Select Participants</label>
+            <div style="max-height: 240px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 14px; padding: 12px; background: rgba(0,0,0,0.1);">
+                <div id="userSelectionList"></div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+            <button id="cancelNewChatBtn" type="button" class="btn-secondary">Cancel</button>
+            <button id="confirmNewChatBtn" type="button" class="btn-primary">Send Request</button>
+        </div>
+    </div>
+</div>
+
+<div id="profileModal" class="name-modal hidden" aria-hidden="true">
+    <div class="name-modal-panel" role="dialog" aria-modal="true" style="text-align: center; max-width: 360px; padding: 32px 24px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 1.5rem; color: var(--text-primary);">Edit Profile</h3>
+        
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 12px; text-align: left;">Avatar</label>
+            <div id="currentAvatarDisplay" style="width: 80px; height: 80px; border-radius: 50%; background: var(--border-color); margin: 0 auto 12px auto; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s;">
+                <span style="font-size: 2rem; color: var(--text-secondary);">👤</span>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0;">Click to change avatar</p>
+
+            <div id="avatarGridContainer" class="hidden" style="margin-top: 16px;">
+                <div id="avatarGrid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; justify-items: center;">
+                    <!-- Avatars generated by JS -->
+                </div>
+            </div>
+            <input type="hidden" id="profilePhotoInput">
+        </div>
+
+        <div style="margin-bottom: 24px; text-align: left;">
+            <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600;">Display Name</label>
+            <input type="text" id="profileNameInput" placeholder="Enter your name" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: transparent; color: var(--text-primary); font-size: 1rem; box-sizing: border-box;">
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button id="cancelProfileBtn" type="button" style="padding: 10px 20px; border: 1px solid var(--border-color); border-radius: 8px; background: transparent; color: var(--text-primary); font-weight: 600; cursor: pointer; flex: 1;">Cancel</button>
+            <button id="saveProfileBtn" type="button" style="padding: 10px 20px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: 600; cursor: pointer; flex: 1;">Save</button>
+        </div>
+    </div>
+</div>
+
+<div id="userProfileModal" class="name-modal hidden" aria-hidden="true" style="z-index: 2000;">
+    <div class="name-modal-panel" role="dialog" aria-modal="true" style="text-align: center; max-width: 320px; padding: 32px 24px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 1.5rem; color: var(--text-primary);">User Profile</h3>
+        
+        <div id="userProfileAvatarDisplay" style="width: 100px; height: 100px; border-radius: 50%; background: var(--border-color); margin: 0 auto 16px auto; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <span style="font-size: 2.5rem; color: white;">?</span>
+        </div>
+        
+        <h4 id="userProfileNameDisplay" style="margin-top: 0; margin-bottom: 8px; font-size: 1.25rem; color: var(--text-primary);">Username</h4>
+        <p id="userProfileEmailDisplay" style="margin-top: 0; margin-bottom: 24px; font-size: 0.9rem; color: var(--text-secondary);">user@email.com</p>
+
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button id="closeUserProfileBtn" type="button" style="padding: 10px 30px; border: 1px solid var(--border-color); border-radius: 8px; background: transparent; color: var(--text-primary); font-weight: 600; cursor: pointer;">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="incomingCallModal" class="name-modal hidden" aria-hidden="true" style="z-index: 2000;">
+    <div class="name-modal-panel" role="dialog" aria-modal="true" style="text-align: center; max-width: 320px; padding: 24px;">
+        <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.25rem;">Incoming Call</h3>
+        <p id="incomingCallText" style="margin-bottom: 24px; font-size: 0.95rem; line-height: 1.4;">Someone is calling you...</p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button id="declineCallBtn" type="button" class="btn-danger" style="padding: 10px 20px; border: none; border-radius: 8px; background: var(--danger); color: white; font-weight: 600; cursor: pointer;">Decline</button>
+            <button id="acceptCallBtn" type="button" style="padding: 10px 20px; border: none; border-radius: 8px; background: #25D366; color: white; font-weight: 600; cursor: pointer;">Accept</button>
+        </div>
+    </div>
+</div>
+
+<audio id="remoteAudio" autoplay></audio>
+
+<script src="/app.js?v=12"></script>
+</body>
+</html>
