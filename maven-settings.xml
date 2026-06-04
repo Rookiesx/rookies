@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <proxies>
+        <!--
+        Uncomment and configure this proxy block if your environment requires an HTTP(S) proxy.
+        Replace host/port/username/password as needed.
+        -->
+        <!--
+        <proxy>
+            <id>corp-proxy</id>
+            <active>true</active>
+            <protocol>http</protocol>
+            <host>proxy.example.com</host>
+            <port>8080</port>
+            <username>proxyuser</username>
+            <password>proxypass</password>
+            <nonProxyHosts>localhost|127.0.0.1</nonProxyHosts>
+        </proxy>
+        -->
+    </proxies>
+
+    <mirrors>
+        <!-- Add a mirror if you have an internal Maven repository mirror. -->
+    </mirrors>
+
+    <profiles>
+        <profile>
+            <id>local-insecure-repository</id>
+            <properties>
+                <maven.wagon.http.ssl.insecure>true</maven.wagon.http.ssl.insecure>
+                <maven.wagon.http.ssl.allowall>true</maven.wagon.http.ssl.allowall>
+            </properties>
+        </profile>
+    </profiles>
+
+    <activeProfiles>
+        <activeProfile>local-insecure-repository</activeProfile>
+    </activeProfiles>
+</settings>
