@@ -14,9 +14,19 @@ public class FirebaseConfig {
     @PostConstruct
     public void init() {
         try {
-            InputStream serviceAccount = getClass().getClassLoader().getResourceAsStream("firebase-service-account.json");
+            java.io.InputStream serviceAccount = null;
+            String envCreds = System.getenv("FIREBASE_CREDENTIALS");
+            
+            if (envCreds != null && !envCreds.trim().isEmpty()) {
+                // Use Environment Variable for Production (Render)
+                serviceAccount = new java.io.ByteArrayInputStream(envCreds.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } else {
+                // Fallback to local file for development
+                serviceAccount = getClass().getClassLoader().getResourceAsStream("firebase-service-account.json");
+            }
+
             if (serviceAccount == null) {
-                System.err.println("Firebase service account file not found!");
+                System.err.println("Firebase service account file or FIREBASE_CREDENTIALS not found!");
                 return;
             }
 
