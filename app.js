@@ -2143,6 +2143,7 @@
         var pos = start + emoji.length;
         messageInput.focus();
         messageInput.setSelectionRange(pos, pos);
+        messageInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     if (emojiButton) {
