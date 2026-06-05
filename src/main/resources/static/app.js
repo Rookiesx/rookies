@@ -11,7 +11,7 @@
     firebase.initializeApp(firebaseConfig);
 
     // Set persistence to SESSION so that each tab requires its own login
-    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
     var socket = null;
     var clientId = localStorage.getItem('clientId') || null; // retrieve persisted ID
@@ -1134,12 +1134,7 @@
 
                     if (message.replyToClientId === clientId && message.clientId !== clientId) {
                         var roomNameStr = roomObj ? roomObj.name : "Chat";
-                        showNotification("New Reply", message.sender + ' replied to your message in ' + roomNameStr, function () {
-                            joinRoom(message.roomId);
-                        });
-                    } else if (message.clientId !== clientId) {
-                        var roomNameStr = roomObj ? roomObj.name : "Chat";
-                        showNotification("New Message", message.sender + ' sent a message in ' + roomNameStr, function () {
+                        showNotification(message.sender + ' replied to your message in ' + roomNameStr, function () {
                             joinRoom(message.roomId);
                         });
                     }
@@ -1153,9 +1148,7 @@
                 if (message.type === 'chat' && message.replyToClientId === clientId && message.clientId !== clientId) {
                     var actRoom = knownRooms.find(function (r) { return r.id === activeRoomId; });
                     var actRoomName = actRoom ? actRoom.name : "Chat";
-                    showNotification("New Reply", message.sender + ' replied to your message in ' + actRoomName, null);
-                } else if (message.type === 'chat' && message.clientId !== clientId && document.hidden && message.roomId === activeRoomId) {
-                    showNotification("New Message", message.sender + ' sent a message.', null);
+                    showNotification(message.sender + ' replied to your message in ' + actRoomName, null);
                 }
 
                 if (message.type === 'chat' && message.roomId === activeRoomId) {
@@ -1395,33 +1388,12 @@
         });
     }
 
-    function playNotificationSound() {
-        try {
-            var AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            var ctx = new AudioContext();
-            var osc = ctx.createOscillator();
-            var gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            gain.gain.setValueAtTime(0, ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.3);
-        } catch (e) {}
-    }
-
-    function showNotification(title, text, onClick) {
-        playNotificationSound();
-        
+    function showNotification(text, onClick) {
         if (Notification.permission === "default") {
             Notification.requestPermission();
         }
         if (Notification.permission === "granted") {
-            var n = new Notification(title, { body: text });
+            var n = new Notification("New Reply", { body: text });
             if (onClick) {
                 n.onclick = function () { window.focus(); onClick(); n.close(); };
             }
@@ -1436,8 +1408,7 @@
         }
         var toast = document.createElement('div');
         toast.className = 'toast';
-        toast.style.borderLeft = '4px solid var(--primary)';
-        toast.innerHTML = '<strong>' + title + '</strong><br>' + text;
+        toast.innerHTML = '<strong>Reply:</strong> ' + text;
         if (onClick) {
             toast.onclick = onClick;
         }
@@ -1450,7 +1421,7 @@
         setTimeout(function () {
             toast.classList.remove('show');
             setTimeout(function () { toast.remove(); }, 300);
-        }, 4000);
+        }, 5000);
     }
 
     function updateScrollButton() {
@@ -2741,10 +2712,6 @@
         if (incomingCallText) incomingCallText.textContent = message.sender + " is calling you...";
         incomingCallModal.classList.remove('hidden');
         incomingCallModal.setAttribute('aria-hidden', 'false');
-
-        showNotification("Incoming Call", message.sender + " is calling you...", function () {
-            window.focus();
-        });
 
         playRingtone();
 

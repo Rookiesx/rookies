@@ -9,8 +9,12 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.persistence.Index;
+
 @Entity
-@Table(name = "messages")
+@Table(name = "messages", indexes = {
+    @Index(name = "idx_room_sent", columnList = "roomId, sentAt DESC")
+})
 public class MessageEntity {
 
     @Id
