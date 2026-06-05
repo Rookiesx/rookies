@@ -627,6 +627,7 @@ body.chat-active .chat-panel {
     align-items: center;
     gap: 8px;
     position: relative;
+    min-width: 0;
 }
 
 .mic-btn.recording {
@@ -1353,7 +1354,10 @@ img.jumbo-emoji {
     }
 
     .composer {
-        /* Kept the side-by-side layout for input and action button */
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        align-items: center;
+        gap: 8px;
     }
 
     .composer #nameInput {
