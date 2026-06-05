@@ -6,27 +6,31 @@ import com.google.firebase.FirebaseOptions;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class FirebaseConfig {
 
     @PostConstruct
-    public void init() {
+    public void initialize() {
         try {
-            java.io.InputStream serviceAccount = null;
+            if (!FirebaseApp.getApps().isEmpty()) {
+                return;
+            }
+
+            InputStream serviceAccount;
             String envCreds = System.getenv("FIREBASE_CREDENTIALS");
-            
+
             if (envCreds != null && !envCreds.trim().isEmpty()) {
-                // Use Environment Variable for Production (Render)
-                serviceAccount = new java.io.ByteArrayInputStream(envCreds.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                serviceAccount = new ByteArrayInputStream(envCreds.getBytes(StandardCharsets.UTF_8));
             } else {
-                // Fallback to local file for development
                 serviceAccount = getClass().getClassLoader().getResourceAsStream("firebase-service-account.json");
             }
 
             if (serviceAccount == null) {
-                System.err.println("Firebase service account file or FIREBASE_CREDENTIALS not found!");
+                System.err.println("Firebase credentials not found! Ensure FIREBASE_CREDENTIALS env var is set or firebase-service-account.json is in src/main/resources");
                 return;
             }
 
@@ -34,10 +38,9 @@ public class FirebaseConfig {
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                     .build();
 
-            if (FirebaseApp.getApps().isEmpty()) {
-                FirebaseApp.initializeApp(options);
-                System.out.println("Firebase Admin SDK initialized successfully.");
-            }
+            FirebaseApp.initializeApp(options);
+            System.out.println("Firebase Admin SDK initialized successfully.");
+
         } catch (Exception e) {
             e.printStackTrace();
         }

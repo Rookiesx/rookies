@@ -627,6 +627,8 @@ body.chat-active .chat-panel {
     align-items: center;
     gap: 8px;
     position: relative;
+    flex: 1;
+    min-width: 0;
 }
 
 .mic-btn.recording {
@@ -1353,7 +1355,10 @@ img.jumbo-emoji {
     }
 
     .composer {
-        grid-template-columns: 1fr;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center;
+        gap: 8px;
     }
 
     .composer #nameInput {
@@ -2045,3 +2050,6 @@ body {
 .message.mine .audio-speed-btn:hover {
     background: rgba(255, 255, 255, 0.25);
 }
+.toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+.toast { background: var(--background-secondary); color: var(--text-primary); padding: 12px 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); font-weight: 500; font-size: 0.95rem; }
+.toast.show { transform: translateY(0); opacity: 1; pointer-events: auto; }

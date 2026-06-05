@@ -190,6 +190,54 @@
         }
     }
 
+    function showToast(text, type) {
+        var container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container';
+            document.body.appendChild(container);
+        }
+        var toast = document.createElement('div');
+        toast.className = 'toast';
+        if (type === 'error') {
+            toast.style.borderLeft = '4px solid var(--danger)';
+        } else {
+            toast.style.borderLeft = '4px solid var(--primary)';
+        }
+        toast.innerHTML = text;
+        container.appendChild(toast);
+
+        requestAnimationFrame(function () {
+            toast.classList.add('show');
+        });
+
+        setTimeout(function () {
+            toast.classList.remove('show');
+            setTimeout(function () { toast.remove(); }, 300);
+        }, 4000);
+    }
+    window.alert = function(msg) { showToast(msg); };
+
+    var confirmCallback = null;
+    function customConfirm(title, msg, btnText, isDanger, callback) {
+        var modalTitle = document.getElementById('confirmModalTitle');
+        var modalText = document.getElementById('confirmModalText');
+        
+        if (modalTitle) modalTitle.textContent = title;
+        if (modalText) modalText.textContent = msg;
+        if (confirmYesBtn) {
+            confirmYesBtn.textContent = btnText;
+            confirmYesBtn.style.background = isDanger ? 'var(--danger)' : 'var(--primary)';
+        }
+        
+        confirmCallback = callback;
+        if (confirmModal) {
+            confirmModal.classList.remove('hidden');
+            confirmModal.setAttribute('aria-hidden', 'false');
+        }
+    }
+
     function clearError() {
         if (authError) {
             authError.textContent = "";
@@ -459,10 +507,7 @@
 
     if (clearChatButton) {
         clearChatButton.addEventListener('click', function () {
-            if (confirmModal) {
-                confirmModal.classList.remove('hidden');
-                confirmModal.setAttribute('aria-hidden', 'false');
-            } else if (confirm("Are you sure you want to clear the chat on this device?")) {
+            customConfirm("Clear Chat", "Are you sure you want to clear the chat on this device? This action cannot be undone.", "Clear Chat", true, function() {
                 localStorage.setItem('chatClearedAt_' + clientId + '_' + activeRoomId, Date.now());
                 if (messages) {
                     messages.innerHTML = '';
@@ -472,7 +517,7 @@
                     roomObj.latestMessage = '';
                     renderRoomList();
                 }
-            }
+            });
         });
     }
 
@@ -519,26 +564,26 @@
     if (clearSelectedChatsBtn) {
         clearSelectedChatsBtn.addEventListener('click', function () {
             if (selectedRooms.size === 0) return;
-            if (!confirm('Clear ' + selectedRooms.size + ' selected chat(s)?')) return;
+            customConfirm("Clear Selected", 'Are you sure you want to clear ' + selectedRooms.size + ' selected chat(s)?', "Clear Chats", true, function() {
+                selectedRooms.forEach(function (rId) {
+                    localStorage.setItem('chatClearedAt_' + clientId + '_' + rId, Date.now());
+                    var rObj = knownRooms.find(function (r) { return r.id === rId; });
+                    if (rObj) rObj.latestMessage = '';
 
-            selectedRooms.forEach(function (rId) {
-                localStorage.setItem('chatClearedAt_' + clientId + '_' + rId, Date.now());
-                var rObj = knownRooms.find(function (r) { return r.id === rId; });
-                if (rObj) rObj.latestMessage = '';
+                    if (rId === activeRoomId && messages) {
+                        messages.innerHTML = '';
+                    }
+                });
 
-                if (rId === activeRoomId && messages) {
-                    messages.innerHTML = '';
+                isSelectMode = false;
+                selectedRooms.clear();
+                if (defaultSidebarHeader) defaultSidebarHeader.style.display = 'flex';
+                if (selectModeHeader) {
+                    selectModeHeader.classList.add('hidden');
+                    selectModeHeader.style.display = 'none';
                 }
+                renderRoomList();
             });
-
-            isSelectMode = false;
-            selectedRooms.clear();
-            if (defaultSidebarHeader) defaultSidebarHeader.style.display = 'flex';
-            if (selectModeHeader) {
-                selectModeHeader.classList.add('hidden');
-                selectModeHeader.style.display = 'none';
-            }
-            renderRoomList();
         });
     }
 
@@ -551,14 +596,18 @@
             var msg = isGroup
                 ? 'Are you sure you want to leave this group?'
                 : 'Are you sure you want to unfriend? This will remove the chat for both users.';
-            if (!confirm(msg)) return;
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify({
-                    type: 'unfriend',
-                    roomId: activeRoomId
-                }));
-            }
-            if (menuDropdown) menuDropdown.style.display = 'none';
+            var title = isGroup ? 'Leave Group' : 'Unfriend';
+            var btnText = isGroup ? 'Leave Group' : 'Unfriend';
+            
+            customConfirm(title, msg, btnText, true, function() {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'unfriend',
+                        roomId: activeRoomId
+                    }));
+                }
+                if (menuDropdown) menuDropdown.style.display = 'none';
+            });
         });
     }
 
@@ -571,14 +620,8 @@
 
     if (confirmYesBtn) {
         confirmYesBtn.addEventListener('click', function () {
-            localStorage.setItem('chatClearedAt_' + clientId + '_' + activeRoomId, Date.now());
-            if (messages) {
-                messages.innerHTML = '';
-            }
-            var roomObj = knownRooms.find(function (r) { return r.id === activeRoomId; });
-            if (roomObj) {
-                roomObj.latestMessage = '';
-                renderRoomList();
+            if (confirmCallback) {
+                confirmCallback();
             }
             confirmModal.classList.add('hidden');
             confirmModal.setAttribute('aria-hidden', 'true');
@@ -626,12 +669,12 @@
             });
 
             if (selectedUsers.length === 0) {
-                alert("Please select at least one user to send a request to.");
+                showToast("Please select at least one user to send a request to.", 'error');
                 return;
             }
 
             if (isGroup && !newGroupName.value.trim()) {
-                alert("Please enter a group name.");
+                showToast("Please enter a group name.", 'error');
                 return;
             }
 
@@ -1026,7 +1069,7 @@
                 }
 
                 // WebRTC Signaling
-                var webrtcTypes = ['webrtc_request_call', 'webrtc_ringing', 'webrtc_accept', 'webrtc_decline', 'webrtc_end', 'webrtc_offer', 'webrtc_answer', 'webrtc_ice_candidate'];
+                var webrtcTypes = ['webrtc_request_call', 'webrtc_ringing', 'webrtc_accept', 'webrtc_decline', 'webrtc_end', 'webrtc_offer', 'webrtc_answer', 'webrtc_ice_candidate', 'webrtc_offline'];
                 if (webrtcTypes.includes(message.type)) {
                     if (message.clientId === clientId) return; // ignore our own
                     if (message.targetClientId && message.targetClientId !== clientId) return; // intended for someone else
@@ -1039,6 +1082,7 @@
                     if (message.type === 'webrtc_offer' && typeof handleWebRTCOffer === 'function') handleWebRTCOffer(message);
                     if (message.type === 'webrtc_answer' && typeof handleWebRTCAnswer === 'function') handleWebRTCAnswer(message);
                     if (message.type === 'webrtc_ice_candidate' && typeof handleWebRTCIceCandidate === 'function') handleWebRTCIceCandidate(message);
+                    if (message.type === 'webrtc_offline' && typeof handleWebRTCOffline === 'function') handleWebRTCOffline(message);
                     return;
                 }
 
@@ -1069,7 +1113,7 @@
                     return;
                 }
                 if (message.type === 'request_sent') {
-                    alert(message.content);
+                    showToast(message.content);
                     return;
                 }
 
@@ -1090,7 +1134,12 @@
 
                     if (message.replyToClientId === clientId && message.clientId !== clientId) {
                         var roomNameStr = roomObj ? roomObj.name : "Chat";
-                        showNotification(message.sender + ' replied to your message in ' + roomNameStr, function () {
+                        showNotification("New Reply", message.sender + ' replied to your message in ' + roomNameStr, function () {
+                            joinRoom(message.roomId);
+                        });
+                    } else if (message.clientId !== clientId) {
+                        var roomNameStr = roomObj ? roomObj.name : "Chat";
+                        showNotification("New Message", message.sender + ' sent a message in ' + roomNameStr, function () {
                             joinRoom(message.roomId);
                         });
                     }
@@ -1104,7 +1153,9 @@
                 if (message.type === 'chat' && message.replyToClientId === clientId && message.clientId !== clientId) {
                     var actRoom = knownRooms.find(function (r) { return r.id === activeRoomId; });
                     var actRoomName = actRoom ? actRoom.name : "Chat";
-                    showNotification(message.sender + ' replied to your message in ' + actRoomName, null);
+                    showNotification("New Reply", message.sender + ' replied to your message in ' + actRoomName, null);
+                } else if (message.type === 'chat' && message.clientId !== clientId && document.hidden && message.roomId === activeRoomId) {
+                    showNotification("New Message", message.sender + ' sent a message.', null);
                 }
 
                 if (message.type === 'chat' && message.roomId === activeRoomId) {
@@ -1189,7 +1240,7 @@
             if (!file) return;
 
             if (file.size > 50 * 1024 * 1024) {
-                alert("File is too large (max 50MB).");
+                showToast("File is too large (max 50MB).", 'error');
                 return;
             }
 
@@ -1234,7 +1285,7 @@
                     cancelReply();
                 })
                 .catch(function (err) {
-                    alert("Could not upload file: " + err.message);
+                    showToast("Could not upload file: " + err.message, 'error');
                 })
                 .finally(function () {
                     attachmentButton.innerHTML = originalHtml;
@@ -1329,7 +1380,7 @@
                                 updateRoomPreview(activeRoomId, '🎤 Audio');
                             })
                             .catch(function (err) {
-                                alert("Could not upload audio: " + err.message);
+                                showToast("Could not upload audio: " + err.message, 'error');
                             })
                             .finally(function () {
                                 actionButton.disabled = false;
@@ -1338,18 +1389,39 @@
                         });
                     })
                     .catch(function (err) {
-                        alert("Could not access microphone: " + err.message);
+                        showToast("Could not access microphone: " + err.message, 'error');
                     });
             }
         });
     }
 
-    function showNotification(text, onClick) {
+    function playNotificationSound() {
+        try {
+            var AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            var ctx = new AudioContext();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gain.gain.setValueAtTime(0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+        } catch (e) {}
+    }
+
+    function showNotification(title, text, onClick) {
+        playNotificationSound();
+        
         if (Notification.permission === "default") {
             Notification.requestPermission();
         }
         if (Notification.permission === "granted") {
-            var n = new Notification("New Reply", { body: text });
+            var n = new Notification(title, { body: text });
             if (onClick) {
                 n.onclick = function () { window.focus(); onClick(); n.close(); };
             }
@@ -1364,7 +1436,8 @@
         }
         var toast = document.createElement('div');
         toast.className = 'toast';
-        toast.innerHTML = '<strong>Reply:</strong> ' + text;
+        toast.style.borderLeft = '4px solid var(--primary)';
+        toast.innerHTML = '<strong>' + title + '</strong><br>' + text;
         if (onClick) {
             toast.onclick = onClick;
         }
@@ -1377,7 +1450,7 @@
         setTimeout(function () {
             toast.classList.remove('show');
             setTimeout(function () { toast.remove(); }, 300);
-        }, 5000);
+        }, 4000);
     }
 
     function updateScrollButton() {
@@ -2099,6 +2172,7 @@
         var pos = start + emoji.length;
         messageInput.focus();
         messageInput.setSelectionRange(pos, pos);
+        messageInput.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     if (emojiButton) {
@@ -2617,7 +2691,7 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("Microphone not supported");
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         } catch (e) {
-            alert("Could not access microphone: " + e.message);
+            showToast("Could not access microphone: " + e.message, 'error');
             return;
         }
 
@@ -2668,6 +2742,10 @@
         incomingCallModal.classList.remove('hidden');
         incomingCallModal.setAttribute('aria-hidden', 'false');
 
+        showNotification("Incoming Call", message.sender + " is calling you...", function () {
+            window.focus();
+        });
+
         playRingtone();
 
         socket.send(JSON.stringify({
@@ -2705,7 +2783,7 @@
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("Microphone not supported");
             localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         } catch (e) {
-            alert("Could not access microphone: " + e.message);
+            showToast("Could not access microphone: " + e.message, 'error');
             endCall();
             return;
         }
@@ -2741,6 +2819,31 @@
             stopRingtone();
             inCallStatus.textContent = "Call Declined";
             setTimeout(resetCallState, 2000);
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "system",
+                    roomId: currentCallRoomId,
+                    content: "📞 Missed call"
+                }));
+            }
+        }
+    };
+
+    window.handleWebRTCOffline = function (message) {
+        if (callState === 'calling' || callState === 'ringing') {
+            stopRingtone();
+            inCallStatus.textContent = "User is offline";
+            showToast("User is offline. They will see a missed call.");
+            setTimeout(resetCallState, 2000);
+
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "system",
+                    roomId: currentCallRoomId,
+                    content: "📞 Missed call"
+                }));
+            }
         }
     };
 
@@ -2834,6 +2937,16 @@
     function endCall() {
         if (callState === 'idle') return;
 
+        if (callState === 'calling' || callState === 'ringing') {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: "system",
+                    roomId: currentCallRoomId,
+                    content: "📞 Missed call"
+                }));
+            }
+        }
+
         socket.send(JSON.stringify({
             type: "webrtc_end",
             roomId: currentCallRoomId,
@@ -2849,6 +2962,10 @@
     window.handleWebRTCEnd = function (message) {
         if (callState !== 'idle') {
             inCallStatus.textContent = "Call Ended";
+            if (incomingCallModal) {
+                incomingCallModal.classList.add('hidden');
+                incomingCallModal.setAttribute('aria-hidden', 'true');
+            }
             setTimeout(resetCallState, 1500);
         }
     };

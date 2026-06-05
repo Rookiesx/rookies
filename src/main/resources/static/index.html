@@ -5,11 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Rookies</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles.css?v=3">
+    <link rel="stylesheet" href="/styles.css?v=5">
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
     <script src="https://unpkg.com/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }).catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </head>
 <body>
 <main class="app-shell">
@@ -178,41 +191,45 @@
 </div>
 
 <div id="confirmModal" class="name-modal hidden" aria-hidden="true" style="z-index: 2000;">
-    <div class="name-modal-panel" role="dialog" aria-modal="true" style="text-align: center; max-width: 320px; padding: 24px;">
-        <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 1.25rem;">Clear Chat</h3>
-        <p style="margin-bottom: 24px; font-size: 0.95rem; line-height: 1.4;">Are you sure you want to clear the chat on this device?</p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-            <button id="confirmCancelBtn" type="button" style="padding: 10px 20px; border: 1px solid var(--border-color); border-radius: 8px; background: transparent; color: var(--text-primary); font-weight: 600; cursor: pointer;">Cancel</button>
-            <button id="confirmYesBtn" type="button" class="btn-danger" style="padding: 10px 20px; border: none; border-radius: 8px; background: var(--danger); color: white; font-weight: 600; cursor: pointer;">Clear</button>
+    <div class="name-modal-panel" role="dialog" aria-modal="true" style="text-align: center; max-width: 380px;">
+        <h3 id="confirmModalTitle" style="margin-top: 0; margin-bottom: 12px;">Confirm Action</h3>
+        <p id="confirmModalText" style="margin-bottom: 32px;">Are you sure?</p>
+        <div style="display: flex; gap: 12px;">
+            <button id="confirmCancelBtn" type="button" class="btn-secondary">Cancel</button>
+            <button id="confirmYesBtn" type="button" class="btn-danger" style="flex: 1; border: none; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; background: var(--primary); color: white; min-height: 48px; display: inline-flex; align-items: center; justify-content: center;">Confirm</button>
         </div>
     </div>
 </div>
 
 <div id="newChatModal" class="name-modal hidden" aria-hidden="true">
-    <div class="name-modal-panel new-chat-panel" role="dialog" aria-modal="true">
+    <div class="name-modal-panel new-chat-panel" role="dialog" aria-modal="true" style="max-width: 420px; text-align: left;">
         <h3>New Chat</h3>
+        <p style="font-size: 0.95rem; margin-bottom: 24px;">Start a new conversation or create a group chat.</p>
         
-        <div style="margin-bottom: 16px;">
-            <label style="margin-right: 16px; font-weight: 600;">
-                <input type="radio" name="chatType" value="INDIVIDUAL" checked> 1-on-1 Chat
+        <div style="margin-bottom: 20px; display: flex; gap: 16px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
+                <input type="radio" name="chatType" value="INDIVIDUAL" checked style="width: 18px; height: 18px; accent-color: var(--primary);"> 1-on-1 Chat
             </label>
-            <label style="font-weight: 600;">
-                <input type="radio" name="chatType" value="GROUP"> Group Chat
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; color: var(--text-primary);">
+                <input type="radio" name="chatType" value="GROUP" style="width: 18px; height: 18px; accent-color: var(--primary);"> Group Chat
             </label>
         </div>
 
-        <div id="groupNameContainer" style="display: none; margin-bottom: 16px;">
-            <input type="text" id="newGroupName" placeholder="Enter Group Name" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; background: transparent; color: var(--text-primary);">
+        <div id="groupNameContainer" style="display: none; margin-bottom: 20px;">
+            <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">Group Name</label>
+            <input type="text" id="newGroupName" class="auth-input" placeholder="Enter Group Name">
         </div>
 
-        <div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; margin-bottom: 20px;">
-            <p style="font-size: 0.85rem; margin-top: 0; margin-bottom: 8px;">Select users to chat with:</p>
-            <div id="userSelectionList"></div>
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600;">Select Participants</label>
+            <div style="max-height: 240px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 14px; padding: 12px; background: rgba(0,0,0,0.1);">
+                <div id="userSelectionList"></div>
+            </div>
         </div>
 
-        <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            <button id="cancelNewChatBtn" type="button" style="padding: 10px 20px; border: 1px solid var(--border-color); border-radius: 8px; background: transparent; color: var(--text-primary); font-weight: 600; cursor: pointer;">Cancel</button>
-            <button id="confirmNewChatBtn" type="button" style="padding: 10px 20px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: 600; cursor: pointer;">Send Request</button>
+        <div style="display: flex; gap: 12px;">
+            <button id="cancelNewChatBtn" type="button" class="btn-secondary">Cancel</button>
+            <button id="confirmNewChatBtn" type="button" class="btn-primary">Send Request</button>
         </div>
     </div>
 </div>
@@ -278,6 +295,6 @@
 
 <audio id="remoteAudio" autoplay></audio>
 
-<script src="/app.js?v=12"></script>
+<script src="/app.js?v=14"></script>
 </body>
 </html>
